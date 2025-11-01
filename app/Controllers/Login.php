@@ -11,10 +11,30 @@ class Login extends BaseController
 
     public function authenticate()
     {
-        // TODO: Add authentication logic here
-        // 1. Validate input
-        // 2. Check credentials against the database
-        // 3. Set session data
-        // 4. Redirect to the appropriate page
+        $session = session();
+        $db = \Config\Database::connect();
+
+        $username = $this->request->getPost('username');
+        $password = $this->request->getPost('password');
+
+        $user = $db->table('users')->where('username', $username)->get()->getRow();
+
+        if ($user) {
+            if (password_verify($password, $user->password)) {
+                $session->set([
+                    'username' => $user->username,
+                    'isLoggedIn' => TRUE
+                ]);
+                return redirect()->to('/coffee');
+            }
+        }
+
+        $session->setFlashdata('msg', 'Wrong password or username.');
+        return redirect()->to('/');
+    }
+    public function logout()
+    {
+        session()->destroy();
+        return redirect()->to('/');
     }
 }

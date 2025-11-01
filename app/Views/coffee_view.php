@@ -10,6 +10,7 @@
 <body>
 
     <h1>Welcome to the Coffee Page!</h1>
+    <p><a href="/logout">Logout</a></p>
     <p>This is a placeholder for the coffee page.</p>
 
 </body>
