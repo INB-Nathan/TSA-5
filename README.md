@@ -1,68 +1,97 @@
-# CodeIgniter 4 Application Starter
+# TSA5-Form_Validation
 
-## What is CodeIgniter?
+> **Course:** IT0049 – Web System and Technologies
+> **Activity Title:** Technical Summative Assessment 3 – Individual Project: Transactional Website with CodeIgniter 4 Validation
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+---
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+## Objectives
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+* Apply `CodeIgniter 4` validation techniques in user registration and login functionalities.
+* Develop a simple transactional website with customer and admin interfaces.
+* Implement database interaction using one of the following: standard query, query builder, or model.
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+## Intended Learning Outcomes
 
-## Installation & updates
+By the end of this activity, you should be able to:
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+* Demonstrate the use of `CodeIgniter 4` validation (`setRules`, `run`, or validation class).
+* Create a functional login and registration system with database integration.
+* Document and reflect on the development process of a transactional web system.
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+---
 
-## Setup
+## Activity Instructions
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+### Overview
 
-## Important Change with index.php
+You are required to individually develop a simple transactional website using `CodeIgniter 4`. Suggested themes include a coffee shop, school portal, or any basic service platform.
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+## Required Pages and Features
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+### 1. Login Page
 
-**Please** read the user guide for a better explanation of how CI4 works!
+* Accepts email/username and password.
+* Uses CodeIgniter validation.
+* Redirects to appropriate dashboard (customer or admin).
 
-## Repository Management
+### 2. Registration Page
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+* Applies validation using `setRules()` or `run()` method.
+* Stores user data in the database using one technique: standard query, query builder, or model.
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+### 3. Home Page
 
-## Server Requirements
+**For Customer:**
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+* View available items/services (e.g., coffee menu, announcements).
+* View own profile.
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+**For Admin:**
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
+* View list of registered users.
+* Perform user maintenance (edit/delete).
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+### 4. Logout Functionality
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+* Ends session and redirects to login.
+
+## Development Requirements
+
+* Use `CodeIgniter 4`.
+* Apply validation techniques discussed in Module 3.
+* Choose one database interaction method (standard query, query builder, or model).
+* Implement session management for login/logout.
+* Use basic Bootstrap or CSS for layout (optional but encouraged).
+
+---
+
+## Submission Instructions
+
+Submit the following via your LMS or designated platform:
+
+**1. Project Folder (`.ZIP`)**
+
+* Complete CodeIgniter project.
+* Include `.SQL` file for database.
+
+**2. Documentation (`.PDF`)**
+
+* **Code Snippets:** Copy-paste of key syntax.
+* **Screenshots:** Each page and feature.
+* **Explanation:** Step-by-step development process.
+* **Reflection:** Learnings and challenges.
+* **CV:** Updated curriculum vitae at the end.
+
+---
+
+## Grading Rubric (100 Points)
+
+| Criteria | Points | Description |
+| :--- | :---: | :--- |
+| **Functionality** | 30 | Login, registration, homepage, logout, admin/customer views work as expected. |
+| **Validation Implementation** | 20 | Proper use of CodeIgniter 4 validation techniques. |
+| **Database Integration** | 15 | Correct use of standard query, query builder, or model. |
+| **Documentation Quality** | 15 | Clear syntax, screenshots, explanations, and reflections. |
+| **UI/UX and Presentation** | 10 | Clean layout, user-friendly interface. |
+| **CV and Professionalism** | 10 | Well-formatted CV and overall presentation. |
