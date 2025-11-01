@@ -31,3 +31,24 @@ Brewkaholic is a Technical Summative Assesment for Web System Development in FEU
 ## Database Schema
 
 The database schema is defined in the `schema.sql` file in the root of the project. It includes tables for users, roles, items, categories, and more.
+
+## Login
+
+The application has a login page as the default entry point. Users can log in with their username and password.
+
+The login form is located at `app/Views/login.php`.
+The login logic is handled by the `Login` controller at `app/Controllers/Login.php`.
+
+## Registration
+
+Users can register for a new account by clicking the "Register here" link on the login page.
+The registration form requires a username, email, password, and password confirmation.
+
+The registration form is located at `app/Views/register.php`.
+The registration logic is handled by the `Register` controller at `app/Controllers/Register.php`.
+
+## Authentication
+
+The application uses a filter to protect routes that require authentication.
+The `AuthFilter` at `app/Filters/AuthFilter.php` checks if a user is logged in before allowing access to a protected page.
+If the user is not logged in, they are redirected to the login page.
