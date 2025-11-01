@@ -19,7 +19,7 @@ class Coffee extends BaseController
         // Get all categories
         $categories = $db->table('categories')->get()->getResult();
         
-        // Get all announcements (handle if table doesn't exist)
+        // Get all announcements
         $announcements = [];
         try {
             $announcements = $db->table('announcements')
@@ -27,7 +27,6 @@ class Coffee extends BaseController
                 ->get()
                 ->getResult();
         } catch (\Exception $e) {
-            // Table doesn't exist yet, set empty array
             $announcements = [];
         }
         
