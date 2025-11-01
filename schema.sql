@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS categories (
   description TEXT
 );
 
+-- admin pogiako123
+
 -- Insert sample categories
 INSERT INTO categories (name, description) VALUES
 ('Hot Coffees', 'Tabe Kapeng Mainit'),
