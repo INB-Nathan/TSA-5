@@ -43,6 +43,7 @@ The login logic is handled by the `Login` controller at `app/Controllers/Login.p
 
 Users can register for a new account by clicking the "Register here" link on the login page.
 The registration form requires a username, email, password, and password confirmation.
+The username must be alphanumeric (and underscores). The password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.
 
 The registration form is located at `app/Views/register.php`.
 The registration logic is handled by the `Register` controller at `app/Controllers/Register.php`.

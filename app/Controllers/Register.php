@@ -11,10 +11,35 @@ class Register extends BaseController
 
     public function create()
     {
-        // TODO: Add registration logic here
-        // 1. Validate input
-        // 2. Check if user already exists
-        // 3. Create new user in the database
-        // 4. Redirect to the login page with a success message
+        $validation =  \Config\Services::validation();
+
+        $rules = [
+            'username' => 'required|min_length[3]|max_length[255]|is_unique[users.username]|regex_match[/^[a-zA-Z0-9_]+$/]',
+            'email'    => 'required|valid_email|is_unique[users.email]',
+            'password' => 'required|min_length[8]|regex_match[/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/]',
+            'confirm_password' => 'required|matches[password]'
+        ];
+
+        if (!$this->validate($rules)) {
+            return view('register', [
+                'validation' => $this->validator
+            ]);
+        }
+
+        $db = \Config\Database::connect();
+
+        $data = [
+            'username' => $this->request->getPost('username'),
+            'email'    => $this->request->getPost('email'),
+            'password' => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT)
+        ];
+
+        $db->table('users')->insert($data);
+        $userId = $db->insertID();
+
+        $db->table('user_roles')->insert(['user_id' => $userId, 'role_id' => 2]);
+
+
+        return redirect()->to('/')->with('msg', 'Registration successful. Please login.');
     }
 }

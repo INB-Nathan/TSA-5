@@ -11,6 +11,12 @@
 
     <h1>Register</h1>
 
+    <?php if (isset($validation)): ?>
+        <div>
+            <?= $validation->listErrors() ?>
+        </div>
+    <?php endif; ?>
+
     <form action="/register/create" method="post">
         <?= csrf_field() ?>
         <label for="username">Username</label>
