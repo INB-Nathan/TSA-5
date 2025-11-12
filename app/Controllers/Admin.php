@@ -8,15 +8,12 @@ class Admin extends BaseController
     {
         $userModel = new \App\Models\UserModel();
         
-        // Pagination settings
         $perPage = 10;
         $page = max(1, (int) ($this->request->getVar('page') ?? 1));
         
-        // Get total count and paginated users
         $totalUsers = $userModel->getTotalUsers();
         $totalPages = $totalUsers > 0 ? ceil($totalUsers / $perPage) : 1;
         
-        // Ensure page doesn't exceed total pages and is at least 1
         $page = max(1, min($page, $totalPages));
         
         $users = $userModel->getUsersWithRoles($perPage, $page);
@@ -35,15 +32,12 @@ class Admin extends BaseController
     {
         $userModel = new \App\Models\UserModel();
         
-        // Pagination settings
         $perPage = 10;
         $page = max(1, (int) ($this->request->getVar('page') ?? 1));
         
-        // Get total count and paginated users
         $totalUsers = $userModel->getTotalUsers();
         $totalPages = $totalUsers > 0 ? ceil($totalUsers / $perPage) : 1;
         
-        // Ensure page doesn't exceed total pages and is at least 1
         $page = max(1, min($page, $totalPages));
         
         $users = $userModel->getUsersWithRoles($perPage, $page);
@@ -108,7 +102,6 @@ class Admin extends BaseController
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
         
-        // Update user data
         $data = [
             'username' => $this->request->getPost('username'),
             'email'    => $this->request->getPost('email'),
@@ -117,10 +110,8 @@ class Admin extends BaseController
         
         $db->table('users')->where('id', $id)->update($data);
         
-        // Update user role
         $roleId = $this->request->getPost('role_id');
         
-        // Check if user_roles entry exists
         $existingRole = $db->table('user_roles')
             ->where('user_id', $id)
             ->get()
@@ -146,13 +137,11 @@ class Admin extends BaseController
         $db = \Config\Database::connect();
         $session = session();
         
-        // Prevent deleting yourself
         if ($id == session()->get('user_id')) {
             $session->setFlashdata('msg', 'You cannot delete your own account.');
             return redirect()->to('/admin/users');
         }
         
-        // Delete user (cascade will handle user_roles)
         $db->table('users')->where('id', $id)->delete();
         
         $session->setFlashdata('msg', 'User deleted successfully.');
@@ -164,20 +153,16 @@ class Admin extends BaseController
         $db = \Config\Database::connect();
         $itemModel = new \App\Models\ItemModel();
         
-        // Pagination settings
         $perPage = 10;
         $page = max(1, (int) ($this->request->getVar('page') ?? 1));
         
-        // Get total count and paginated items
         $totalItems = $itemModel->getTotalItems();
         $totalPages = $totalItems > 0 ? ceil($totalItems / $perPage) : 1;
         
-        // Ensure page doesn't exceed total pages and is at least 1
         $page = max(1, min($page, $totalPages));
         
         $items = $itemModel->getItemsWithCategories($perPage, $page);
         
-        // Get all categories for the form
         $categories = $db->table('categories')->get()->getResult();
         
         $data = [
@@ -209,21 +194,17 @@ class Admin extends BaseController
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
         
-        // Handle file upload
-        $imageUrl = '/assets/images/placeholder.jpg'; // Default placeholder
+        $imageUrl = '/assets/images/placeholder.jpg';
         $file = $this->request->getFile('image');
         
         if ($file && $file->isValid() && !$file->hasMoved()) {
-            // Generate unique filename
             $newName = $file->getRandomName();
             $uploadPath = FCPATH . 'assets/images/';
             
-            // Create directory if it doesn't exist
             if (!is_dir($uploadPath)) {
                 mkdir($uploadPath, 0755, true);
             }
             
-            // Move file to upload directory
             if ($file->move($uploadPath, $newName)) {
                 $imageUrl = '/assets/images/' . $newName;
             }
@@ -239,7 +220,6 @@ class Admin extends BaseController
         
         $db->table('items')->insert($data);
         
-        // Create availability entry
         $itemId = $db->insertID();
         $db->table('item_availability')->insert([
             'item_id' => $itemId,
@@ -255,7 +235,6 @@ class Admin extends BaseController
         $db = \Config\Database::connect();
         $session = session();
         
-        // Delete item (cascade will handle item_availability)
         $db->table('items')->where('id', $id)->delete();
         
         $session->setFlashdata('msg', 'Item deleted successfully.');
@@ -266,15 +245,12 @@ class Admin extends BaseController
     {
         $announcementModel = new \App\Models\AnnouncementModel();
         
-        // Pagination settings
         $perPage = 10;
         $page = max(1, (int) ($this->request->getVar('page') ?? 1));
         
-        // Get total count and paginated announcements
         $totalAnnouncements = $announcementModel->getTotalAnnouncements();
         $totalPages = $totalAnnouncements > 0 ? ceil($totalAnnouncements / $perPage) : 1;
         
-        // Ensure page doesn't exceed total pages and is at least 1
         $page = max(1, min($page, $totalPages));
         
         $announcements = $announcementModel->getAnnouncements($perPage, $page);

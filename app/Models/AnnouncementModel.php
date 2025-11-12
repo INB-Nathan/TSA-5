@@ -13,9 +13,6 @@ class AnnouncementModel extends Model
     protected $createdField = 'created_at';
     protected $updatedField = 'updated_at';
     
-    /**
-     * Get announcements (for pagination)
-     */
     public function getAnnouncements($perPage = 10, $page = 1)
     {
         $offset = ($page - 1) * $perPage;
@@ -27,9 +24,7 @@ class AnnouncementModel extends Model
             ->getResult();
     }
     
-    /**
-     * Get total count of announcements
-     */
+
     public function getTotalAnnouncements()
     {
         return $this->db->table('announcements')

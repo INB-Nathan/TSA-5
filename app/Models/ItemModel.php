@@ -11,9 +11,7 @@ class ItemModel extends Model
     protected $allowedFields = ['name', 'description', 'price', 'category_id', 'image_url'];
     protected $useTimestamps = false;
     
-    /**
-     * Get items with their categories (for pagination)
-     */
+
     public function getItemsWithCategories($perPage = 10, $page = 1)
     {
         $offset = ($page - 1) * $perPage;
@@ -26,10 +24,7 @@ class ItemModel extends Model
             ->get()
             ->getResult();
     }
-    
-    /**
-     * Get total count of items
-     */
+
     public function getTotalItems()
     {
         return $this->db->table('items')

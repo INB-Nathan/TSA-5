@@ -50,20 +50,17 @@ class Account extends BaseController
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
         
-        // Get current user
         $user = $db->table('users')
             ->where('id', $userId)
             ->get()
             ->getRow();
         
-        // Verify current password
         $currentPassword = $this->request->getPost('current_password');
         if (!password_verify($currentPassword, $user->password)) {
             $session->setFlashdata('error', 'Current password is incorrect.');
             return redirect()->to('/account');
         }
         
-        // Update password
         $newPassword = password_hash($this->request->getPost('password'), PASSWORD_DEFAULT);
         $db->table('users')
             ->where('id', $userId)
@@ -84,7 +81,6 @@ class Account extends BaseController
             return redirect()->to('/');
         }
         
-        // Verify sudo password (current password)
         $sudoPassword = $this->request->getPost('sudo_password');
         
         $user = $db->table('users')
@@ -97,10 +93,8 @@ class Account extends BaseController
             return redirect()->to('/account');
         }
         
-        // Delete user account (cascade will handle user_roles)
         $db->table('users')->where('id', $userId)->delete();
         
-        // Destroy session
         $session->destroy();
         
         $session->setFlashdata('msg', 'Your account has been deleted successfully.');

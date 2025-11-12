@@ -11,9 +11,7 @@ class UserModel extends Model
     protected $allowedFields = ['username', 'password', 'email', 'created_at'];
     protected $useTimestamps = false;
     
-    /**
-     * Get users with their roles (for pagination)
-     */
+
     public function getUsersWithRoles($perPage = 10, $page = 1)
     {
         $offset = ($page - 1) * $perPage;
@@ -28,9 +26,7 @@ class UserModel extends Model
             ->getResult();
     }
     
-    /**
-     * Get total count of users
-     */
+
     public function getTotalUsers()
     {
         return $this->db->table('users')

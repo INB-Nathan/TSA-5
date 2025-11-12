@@ -14,6 +14,8 @@ This document provides a comprehensive overview of the application, its features
 - [Filters](#filters)
 - [Views](#views)
 - [Security](#security)
+- [Pagination](#pagination)
+- [Session Management](#session-management)
 - [File Structure](#file-structure)
 
 ## Introduction
@@ -33,28 +35,33 @@ Brewkaholic is a Technical Summative Assessment for Web System Development in FE
 
 ### Admin Features
 - **Dashboard**: Overview of registered users and quick access to management features
+  - Paginated user list (10 users per page)
+  - Session information display
 - **User Management**: 
-  - View all registered users
+  - View all registered users with pagination (10 per page)
   - Edit user information (username, email, role)
   - Reset user passwords to "123" (automatic when editing)
   - Delete users
 - **Item Management**: 
   - Create new menu items with image upload
-  - View all items in a table
+  - View all items in a paginated table (10 per page)
   - Delete items
   - Optional image upload (defaults to placeholder if not provided)
 - **Announcement Management**: 
   - Create announcements with title and content
-  - View all announcements
+  - View all announcements with pagination (10 per page)
   - Delete announcements
 
 ### Security Features
-- Session-based authentication
+- Session-based authentication with timeout management
+- Session ID regeneration on login/logout
+- Activity tracking and automatic session expiration (2 hours)
 - Role-based access control (Admin/Customer)
 - Password hashing using PHP's `password_hash()` with `PASSWORD_DEFAULT`
 - Input validation on registration and login forms
 - CSRF protection on forms
 - Protected routes using filters
+- Security logging for login/logout events
 
 ## Database Schema
 
@@ -134,17 +141,26 @@ Site-wide announcements.
 ## Controllers
 
 ### `Login` (`app/Controllers/Login.php`)
-Handles user authentication.
+Handles user authentication with comprehensive session management.
 
 **Methods:**
 - `index()` - Displays login form
+  - Redirects already logged-in users to appropriate page
 - `authenticate()` - Validates credentials and creates session
+  - Validates input (username and password required)
   - Verifies username and password
+  - Regenerates session ID for security
   - Retrieves user role from `user_roles` table
-  - Sets session variables: `user_id`, `username`, `role_id`, `isLoggedIn`
+  - Sets session variables: `user_id`, `username`, `email`, `role_id`, `isLoggedIn`, `last_activity`, `login_time`
+  - Logs successful login attempts
   - Redirects admin (role_id=1) to `/admin/dashboard`
   - Redirects customer (role_id=2) to `/coffee`
-- `logout()` - Destroys session and redirects to login
+- `logout()` - Securely destroys session
+  - Logs logout event
+  - Removes all session data
+  - Regenerates session ID
+  - Destroys session completely
+  - Sets flash message and redirects to login
 
 ### `Register` (`app/Controllers/Register.php`)
 Handles user registration.
@@ -169,13 +185,17 @@ Customer-facing menu page.
   - Passes data to `coffee_view`
 
 ### `Admin` (`app/Controllers/Admin.php`)
-Admin panel functionality.
+Admin panel functionality with pagination support.
 
 **Methods:**
 - `dashboard()` - Admin dashboard overview
-  - Lists all registered users with roles
+  - Lists paginated registered users (10 per page)
+  - Uses `UserModel` for data retrieval
+  - Calculates pagination parameters
 - `users()` - User management page
-  - Displays table of all users
+  - Displays paginated table of all users (10 per page)
+  - Uses `UserModel::getUsersWithRoles()` and `UserModel::getTotalUsers()`
+  - Handles page parameter from query string
 - `editUser($id)` - Edit user form
   - Pre-populates form with user data
 - `updateUser($id)` - Updates user information
@@ -185,14 +205,17 @@ Admin panel functionality.
 - `deleteUser($id)` - Deletes user account
 - `items()` - Item management page
   - Displays form to create items
-  - Lists all existing items
+  - Lists paginated existing items (10 per page)
+  - Uses `ItemModel` for data retrieval
+  - Fetches categories for dropdown
 - `createItem()` - Creates new menu item
   - Handles optional image upload
   - Stores image in `public/assets/images/`
   - Creates item availability record
 - `deleteItem($id)` - Deletes menu item
 - `announcements()` - Announcement management page
-  - Lists all announcements
+  - Lists paginated announcements (10 per page)
+  - Uses `AnnouncementModel` for data retrieval
 - `createAnnouncement()` - Creates new announcement
   - Validates title (3-255 chars) and content (10+ chars)
 - `deleteAnnouncement($id)` - Deletes announcement
@@ -250,19 +273,25 @@ GET  /admin/announcements/delete/{id}     → Admin::deleteAnnouncement (filter:
 ## Filters
 
 ### `AuthFilter` (`app/Filters/AuthFilter.php`)
-Protects routes requiring authentication.
+Protects routes requiring authentication with session timeout handling.
 
 **Functionality:**
 - Checks if `isLoggedIn` session variable is set
+- Validates session timeout (2 hours inactivity)
+- Updates `last_activity` timestamp on each request
+- Destroys expired sessions and redirects to login
 - Redirects to login page if not authenticated
 - Used on: `/coffee`, `/account/*`
 
 ### `AdminFilter` (`app/Filters/AdminFilter.php`)
-Protects admin-only routes.
+Protects admin-only routes with session timeout handling.
 
 **Functionality:**
 - Checks if user is logged in
+- Validates session timeout (2 hours inactivity)
+- Updates `last_activity` timestamp on each request
 - Verifies `role_id == 1` (admin)
+- Destroys expired sessions and redirects to login
 - Redirects to login if not authenticated
 - Redirects to `/coffee` with error message if not admin
 - Used on: `/admin/*`
@@ -347,8 +376,12 @@ Announcement management interface.
 
 ### Authentication
 - Session-based authentication
+- Session ID regeneration on login/logout (prevents session fixation)
+- Session timeout: 2 hours of inactivity
+- Activity tracking: `last_activity` updated on each request
 - Passwords hashed using `password_hash()` with `PASSWORD_DEFAULT`
-- Session variables: `user_id`, `username`, `role_id`, `isLoggedIn`
+- Session variables: `user_id`, `username`, `email`, `role_id`, `isLoggedIn`, `last_activity`, `login_time`
+- Security logging for login/logout events
 
 ### Authorization
 - Role-based access control
@@ -369,6 +402,362 @@ Announcement management interface.
 - Password hashing prevents plain text storage
 - File uploads stored in `public/assets/images/`
 
+## Pagination
+
+Pagination has been implemented across all admin management pages to improve performance and user experience when dealing with large datasets. The pagination system displays 10 items per page and provides navigation controls.
+
+### Implementation Overview
+
+The pagination system uses a manual implementation approach with CodeIgniter 4's Query Builder, utilizing `limit()` and `offset()` methods. This approach provides fine-grained control over pagination behavior and ensures consistent display across all admin pages.
+
+### Pages with Pagination
+
+The following admin pages implement pagination:
+
+1. **Admin Dashboard** (`/admin/dashboard`) - Registered users list
+2. **User Management** (`/admin/users`) - Users table
+3. **Item Management** (`/admin/items`) - Items table
+4. **Announcement Management** (`/admin/announcements`) - Announcements list
+
+### Technical Implementation
+
+#### Models
+
+Three models have been created to encapsulate pagination logic:
+
+**`UserModel`** (`app/Models/UserModel.php`)
+- `getUsersWithRoles($perPage, $page)` - Retrieves paginated users with role information
+- `getTotalUsers()` - Returns total count of users
+
+**`ItemModel`** (`app/Models/ItemModel.php`)
+- `getItemsWithCategories($perPage, $page)` - Retrieves paginated items with category information
+- `getTotalItems()` - Returns total count of items
+
+**`AnnouncementModel`** (`app/Models/AnnouncementModel.php`)
+- `getAnnouncements($perPage, $page)` - Retrieves paginated announcements
+- `getTotalAnnouncements()` - Returns total count of announcements
+
+#### Controller Logic
+
+Each controller method implementing pagination follows this pattern:
+
+```php
+public function users()
+{
+    $userModel = new UserModel();
+    
+    // Pagination settings
+    $perPage = 10;
+    $page = max(1, (int) ($this->request->getVar('page') ?? 1));
+    
+    // Get total count and calculate total pages
+    $totalUsers = $userModel->getTotalUsers();
+    $totalPages = $totalUsers > 0 ? ceil($totalUsers / $perPage) : 1;
+    $page = max(1, min($page, $totalPages)); // Ensure page is within bounds
+    
+    // Fetch paginated data
+    $users = $userModel->getUsersWithRoles($perPage, $page);
+    
+    // Pass data to view
+    $data = [
+        'users' => $users,
+        'currentPage' => $page,
+        'totalPages' => $totalPages,
+        'totalUsers' => $totalUsers,
+    ];
+    
+    return view('admin/users', $data);
+}
+```
+
+#### View Implementation
+
+Pagination controls are rendered using custom PHP logic in each view:
+
+**Features:**
+- Previous/Next buttons with disabled state when at boundaries
+- Page number links with active state highlighting
+- Ellipsis (...) for large page ranges
+- "Showing X to Y of Z items" counter
+- Always visible pagination (even with fewer than 10 items)
+
+**Example Pagination HTML Structure:**
+```php
+<div class="pagination">
+    <!-- Previous Button -->
+    <?php if ($currentPage > 1) : ?>
+        <a href="/admin/users?page=<?= $currentPage - 1 ?>" class="btn">Previous</a>
+    <?php else : ?>
+        <span class="btn disabled">Previous</span>
+    <?php endif; ?>
+    
+    <!-- Page Numbers -->
+    <?php for ($i = $startPage; $i <= $endPage; $i++) : ?>
+        <?php if ($i == $currentPage) : ?>
+            <span class="active"><?= $i ?></span>
+        <?php else : ?>
+            <a href="/admin/users?page=<?= $i ?>" class="btn"><?= $i ?></a>
+        <?php endif; ?>
+    <?php endfor; ?>
+    
+    <!-- Next Button -->
+    <?php if ($currentPage < $totalPages) : ?>
+        <a href="/admin/users?page=<?= $currentPage + 1 ?>" class="btn">Next</a>
+    <?php else : ?>
+        <span class="btn disabled">Next</span>
+    <?php endif; ?>
+</div>
+```
+
+### Pagination Behavior
+
+1. **Items Per Page**: Fixed at 10 items per page across all paginated pages
+2. **Always Visible**: Pagination controls are always displayed, even when there are fewer than 10 items
+3. **Disabled States**: 
+   - "Previous" button is disabled on the first page
+   - "Next" button is disabled on the last page
+4. **Page Range Display**: Shows up to 5 page numbers (current page ± 2) with ellipsis for larger ranges
+5. **URL Parameters**: Uses `?page=N` query parameter for navigation
+
+### Styling
+
+Pagination controls use custom CSS that matches the application's dark theme:
+
+- `.pagination` - Container with flexbox layout
+- `.pagination .btn` - Clickable page buttons
+- `.pagination .active` - Current page indicator
+- `.pagination .disabled` - Disabled button state (non-clickable)
+
+### Benefits
+
+- **Performance**: Reduces database load by limiting queries to 10 records per page
+- **User Experience**: Easier navigation through large datasets
+- **Consistency**: Uniform pagination behavior across all admin pages
+- **Scalability**: Handles growing datasets efficiently
+
+## Session Management
+
+The application implements comprehensive session management for user authentication, security, and user-specific content display. The session system includes timeout handling, activity tracking, and security best practices.
+
+### Session Configuration
+
+**File**: `app/Config/Session.php`
+
+**Key Settings:**
+- **Driver**: FileHandler (sessions stored in `writepath/session/`)
+- **Cookie Name**: `ci_session`
+- **Expiration**: 7200 seconds (2 hours)
+- **Time to Update**: 300 seconds (5 minutes) - Session ID regeneration interval
+- **Regenerate Destroy**: false (old session data cleaned by garbage collector)
+
+### Session Data Structure
+
+When a user logs in, the following session variables are set:
+
+```php
+[
+    'user_id' => int,           // User's database ID
+    'username' => string,        // User's username
+    'email' => string,          // User's email address
+    'role_id' => int,           // User's role (1=admin, 2=customer)
+    'isLoggedIn' => bool,       // Authentication flag
+    'last_activity' => int,     // Unix timestamp of last activity
+    'login_time' => int         // Unix timestamp of login
+]
+```
+
+### Login Process
+
+**File**: `app/Controllers/Login.php`
+
+**`authenticate()` Method:**
+
+1. **Input Validation**: Validates that both username and password are provided
+2. **Credential Verification**: Checks username and password against database
+3. **Session Regeneration**: Regenerates session ID to prevent session fixation attacks
+4. **Role Retrieval**: Fetches user's role from `user_roles` table
+5. **Session Data Setting**: Stores user information and timestamps
+6. **Activity Logging**: Logs successful login attempts
+7. **Redirect**: 
+   - Admin (role_id=1) → `/admin/dashboard`
+   - Customer (role_id=2) → `/coffee`
+
+**Security Features:**
+- Session ID regeneration on login (`$session->regenerate(true)`)
+- Password verification using `password_verify()`
+- Failed login attempt logging
+
+### Logout Process
+
+**File**: `app/Controllers/Login.php`
+
+**`logout()` Method:**
+
+1. **Logging**: Logs logout event (if username available)
+2. **Session Data Removal**: Removes all session variables
+3. **Session Regeneration**: Regenerates session ID
+4. **Session Destruction**: Completely destroys the session
+5. **Flash Message**: Sets success message
+6. **Redirect**: Redirects to login page
+
+**Security Features:**
+- Complete session cleanup
+- Session ID regeneration to prevent session hijacking
+- Proper session destruction
+
+### Session Timeout
+
+**Implementation**: `app/Filters/AuthFilter.php` and `app/Filters/AdminFilter.php`
+
+**Timeout Duration**: 2 hours (7200 seconds)
+
+**Process:**
+1. On each authenticated request, filters check `last_activity` timestamp
+2. If `(current_time - last_activity) > 7200`, session is expired
+3. Session is destroyed and user is redirected to login with expiration message
+4. If session is valid, `last_activity` is updated to current time
+
+**Benefits:**
+- Automatic logout after inactivity
+- Prevents indefinite session persistence
+- Security against abandoned sessions
+
+### Activity Tracking
+
+**Last Activity Update:**
+- Updated on every authenticated request via filters
+- Stored as Unix timestamp in `last_activity` session variable
+- Used for timeout calculation
+
+**Login Time Tracking:**
+- Set once during login
+- Stored in `login_time` session variable
+- Used for displaying session information to users
+
+### Authentication Filters
+
+#### AuthFilter
+
+**File**: `app/Filters/AuthFilter.php`
+
+**Functionality:**
+- Checks if user is logged in (`isLoggedIn` session variable)
+- Validates session timeout
+- Updates `last_activity` timestamp
+- Redirects to login if not authenticated or session expired
+
+**Applied To**: Customer routes (`/coffee`, `/account/*`)
+
+#### AdminFilter
+
+**File**: `app/Filters/AdminFilter.php`
+
+**Functionality:**
+- Checks if user is logged in
+- Validates session timeout
+- Verifies admin role (`role_id == 1`)
+- Updates `last_activity` timestamp
+- Redirects appropriately based on authentication/authorization status
+
+**Applied To**: Admin routes (`/admin/*`)
+
+### User-Specific Content
+
+Session data is used throughout the application to display user-specific content:
+
+#### Customer Views
+
+**Coffee View** (`app/Views/coffee_view.php`):
+- Username displayed in header: "Welcome, [username]"
+- Personalized welcome message in hero section
+
+**Account Page** (`app/Views/account/index.php`):
+- Session information display:
+  - Login time
+  - Last activity time
+  - Session expiration countdown (hours and minutes remaining)
+
+#### Admin Views
+
+**All Admin Pages**:
+- Username displayed in header: "Admin: [username]"
+- Admin dashboard shows session info panel with:
+  - Logged in username
+  - Email address
+  - Login timestamp
+
+### Session Security Features
+
+1. **Session ID Regeneration**
+   - On login: Prevents session fixation attacks
+   - On logout: Prevents session hijacking
+   - Automatic: Every 5 minutes (configurable)
+
+2. **Session Timeout**
+   - 2-hour inactivity timeout
+   - Automatic logout and cleanup
+   - Prevents abandoned sessions
+
+3. **Activity Tracking**
+   - Last activity timestamp updated on each request
+   - Used for timeout calculation
+   - Displayed to users for transparency
+
+4. **Secure Session Storage**
+   - Sessions stored server-side (file system)
+   - Session ID only stored in secure cookie
+   - No sensitive data in cookies
+
+5. **Access Control**
+   - Protected routes require valid session
+   - Role-based access control using session data
+   - Automatic redirects for unauthorized access
+
+### Redirect Protection
+
+**Login Page** (`app/Controllers/Login.php`):
+- If user is already logged in, redirects to appropriate page:
+  - Admin → `/admin/dashboard`
+  - Customer → `/coffee`
+
+**Register Page** (`app/Controllers/Register.php`):
+- If user is already logged in, redirects to appropriate page
+- Prevents logged-in users from accessing registration
+
+### Session Information Display
+
+Users can view their session information on the Account page:
+
+- **Login Time**: When the current session started
+- **Last Activity**: Most recent activity timestamp
+- **Time Remaining**: Calculated time until session expiration
+
+This provides transparency and helps users understand their session status.
+
+### Logging
+
+**Login Events:**
+- Successful logins: Logged with username and user ID
+- Failed login attempts: Logged with attempted username
+
+**Logout Events:**
+- Logged with username and user ID (if available)
+
+**Log Location**: CodeIgniter logs (typically `writepath/logs/`)
+
+### Best Practices Implemented
+
+1. ✅ Session ID regeneration on login/logout
+2. ✅ Session timeout enforcement
+3. ✅ Activity tracking
+4. ✅ Secure session storage
+5. ✅ Proper session cleanup on logout
+6. ✅ Role-based access control
+7. ✅ Input validation
+8. ✅ Security logging
+9. ✅ User-friendly session information display
+10. ✅ Protection against session fixation attacks
+
 ## File Structure
 
 ```
@@ -377,16 +766,21 @@ brewkaholic/
 │   ├── Config/
 │   │   ├── Database.php          # Database configuration
 │   │   ├── Filters.php           # Filter registration
-│   │   └── Routes.php            # Route definitions
+│   │   ├── Routes.php            # Route definitions
+│   │   └── Session.php           # Session configuration
 │   ├── Controllers/
 │   │   ├── Account.php            # Account management
-│   │   ├── Admin.php             # Admin panel
+│   │   ├── Admin.php             # Admin panel (with pagination)
 │   │   ├── Coffee.php            # Customer menu
-│   │   ├── Login.php              # Authentication
+│   │   ├── Login.php              # Authentication (with session management)
 │   │   └── Register.php          # User registration
 │   ├── Filters/
-│   │   ├── AdminFilter.php       # Admin access control
-│   │   └── AuthFilter.php        # Authentication check
+│   │   ├── AdminFilter.php       # Admin access control (with session timeout)
+│   │   └── AuthFilter.php        # Authentication check (with session timeout)
+│   ├── Models/
+│   │   ├── AnnouncementModel.php # Announcement pagination
+│   │   ├── ItemModel.php         # Item pagination
+│   │   └── UserModel.php         # User pagination
 │   └── Views/
 │       ├── login.php              # Login form
 │       ├── register.php           # Registration form

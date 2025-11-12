@@ -8,7 +8,6 @@ class Register extends BaseController
     {
         $session = session();
         
-        // If user is already logged in, redirect to appropriate page
         if ($session->get('isLoggedIn')) {
             $roleId = $session->get('role_id');
             if ($roleId == 1) {

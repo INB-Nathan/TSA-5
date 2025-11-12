@@ -8,7 +8,6 @@ class Coffee extends BaseController
     {
         $db = \Config\Database::connect();
         
-        // Get all items with categories
         $items = $db->table('items')
             ->select('items.*, categories.name as category_name')
             ->join('categories', 'items.category_id = categories.id', 'left')
@@ -16,10 +15,8 @@ class Coffee extends BaseController
             ->get()
             ->getResult();
         
-        // Get all categories
         $categories = $db->table('categories')->get()->getResult();
         
-        // Get all announcements
         $announcements = [];
         try {
             $announcements = $db->table('announcements')
