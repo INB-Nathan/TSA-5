@@ -39,6 +39,7 @@ class Session extends BaseConfig
      *
      * The number of SECONDS you want the session to last.
      * Setting to 0 (zero) means expire when the browser is closed.
+     * 7200 seconds = 2 hours
      */
     public int $expiration = 7200;
 

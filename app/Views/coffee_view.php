@@ -372,7 +372,12 @@
                     <li><a href="/account">ACCOUNT</a></li>
                 </ul>
             </nav>
-            <a href="/logout" class="logout-link">LOGOUT</a>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <?php if (session()->get('isLoggedIn')) : ?>
+                    <span style="color: #d4a574; font-size: 0.9rem;">Welcome, <?= esc(session()->get('username')) ?></span>
+                <?php endif; ?>
+                <a href="/logout" class="logout-link">LOGOUT</a>
+            </div>
         </div>
     </header>
 
@@ -380,6 +385,11 @@
     <section class="hero">
         <div class="hero-content">
             <h1>OUR STORY</h1>
+            <?php if (session()->get('isLoggedIn')) : ?>
+                <p style="margin-bottom: 1rem;">
+                    Welcome back, <strong><?= esc(session()->get('username')) ?></strong>!
+                </p>
+            <?php endif; ?>
             <p>
                 At Brewkaholic, we believe that every cup of coffee tells a story. Our passion for exceptional coffee 
                 drives us to source the finest beans from around the world, carefully roasted to perfection. 

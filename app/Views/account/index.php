@@ -17,7 +17,7 @@
             font-family: 'Georgia', 'Times New Roman', serif;
             background-color: #1a1a1a;
             color: #d4a574;
-            lit: 1.6;
+            line-height: 1.6;
             min-height: 100vh;
             padding: 2rem;
         }
@@ -214,7 +214,12 @@
                     <li><a href="/account">ACCOUNT</a></li>
                 </ul>
             </nav>
-            <a href="/logout" class="logout-link">LOGOUT</a>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <?php if (session()->get('isLoggedIn')) : ?>
+                    <span style="color: #d4a574; font-size: 0.9rem;"><?= esc(session()->get('username')) ?></span>
+                <?php endif; ?>
+                <a href="/logout" class="logout-link">LOGOUT</a>
+            </div>
         </div>
     </header>
 
@@ -236,6 +241,27 @@
                 <p><strong>Username:</strong> <?= esc($user->username) ?></p>
                 <p><strong>Email:</strong> <?= esc($user->email) ?></p>
                 <p><strong>Member Since:</strong> <?= date('F j, Y', strtotime($user->created_at)) ?></p>
+                <?php if (session()->get('isLoggedIn')) : ?>
+                    <?php 
+                    $loginTime = session()->get('login_time');
+                    $lastActivity = session()->get('last_activity');
+                    ?>
+                    <p><strong>Current Session:</strong></p>
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <?php if ($loginTime) : ?>
+                            <li>Logged in: <?= date('F j, Y g:i A', $loginTime) ?></li>
+                        <?php endif; ?>
+                        <?php if ($lastActivity) : ?>
+                            <li>Last activity: <?= date('F j, Y g:i A', $lastActivity) ?></li>
+                            <?php 
+                            $timeRemaining = 7200 - (time() - $lastActivity);
+                            $hours = floor($timeRemaining / 3600);
+                            $minutes = floor(($timeRemaining % 3600) / 60);
+                            ?>
+                            <li>Session expires in: <?= $hours ?>h <?= $minutes ?>m</li>
+                        <?php endif; ?>
+                    </ul>
+                <?php endif; ?>
             </div>
         </div>
 

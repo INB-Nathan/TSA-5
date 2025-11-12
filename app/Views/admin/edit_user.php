@@ -226,7 +226,12 @@
                     <li><a href="/admin/announcements">ANNOUNCEMENTS</a></li>
                 </ul>
             </nav>
-            <a href="/logout" class="logout-link">LOGOUT</a>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <?php if (session()->get('isLoggedIn')) : ?>
+                    <span style="color: #d4a574; font-size: 0.9rem;">Admin: <?= esc(session()->get('username')) ?></span>
+                <?php endif; ?>
+                <a href="/logout" class="logout-link">LOGOUT</a>
+            </div>
         </div>
     </header>
 

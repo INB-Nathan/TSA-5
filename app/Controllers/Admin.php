@@ -6,19 +6,26 @@ class Admin extends BaseController
 {
     public function dashboard()
     {
-        $db = \Config\Database::connect();
+        $userModel = new \App\Models\UserModel();
         
-        // Get all users with their roles
-        $users = $db->table('users')
-            ->select('users.*, roles.name as role_name')
-            ->join('user_roles', 'users.id = user_roles.user_id', 'left')
-            ->join('roles', 'user_roles.role_id = roles.id', 'left')
-            ->orderBy('users.created_at', 'DESC')
-            ->get()
-            ->getResult();
+        // Pagination settings
+        $perPage = 10;
+        $page = max(1, (int) ($this->request->getVar('page') ?? 1));
+        
+        // Get total count and paginated users
+        $totalUsers = $userModel->getTotalUsers();
+        $totalPages = $totalUsers > 0 ? ceil($totalUsers / $perPage) : 1;
+        
+        // Ensure page doesn't exceed total pages and is at least 1
+        $page = max(1, min($page, $totalPages));
+        
+        $users = $userModel->getUsersWithRoles($perPage, $page);
         
         $data = [
-            'users' => $users
+            'users' => $users,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalUsers' => $totalUsers
         ];
         
         return view('admin/dashboard', $data);
@@ -26,19 +33,26 @@ class Admin extends BaseController
     
     public function users()
     {
-        $db = \Config\Database::connect();
+        $userModel = new \App\Models\UserModel();
         
-        // Get all users with their roles
-        $users = $db->table('users')
-            ->select('users.*, roles.name as role_name')
-            ->join('user_roles', 'users.id = user_roles.user_id', 'left')
-            ->join('roles', 'user_roles.role_id = roles.id', 'left')
-            ->orderBy('users.created_at', 'DESC')
-            ->get()
-            ->getResult();
+        // Pagination settings
+        $perPage = 10;
+        $page = max(1, (int) ($this->request->getVar('page') ?? 1));
+        
+        // Get total count and paginated users
+        $totalUsers = $userModel->getTotalUsers();
+        $totalPages = $totalUsers > 0 ? ceil($totalUsers / $perPage) : 1;
+        
+        // Ensure page doesn't exceed total pages and is at least 1
+        $page = max(1, min($page, $totalPages));
+        
+        $users = $userModel->getUsersWithRoles($perPage, $page);
         
         $data = [
-            'users' => $users
+            'users' => $users,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalUsers' => $totalUsers
         ];
         
         return view('admin/users', $data);
@@ -148,21 +162,30 @@ class Admin extends BaseController
     public function items()
     {
         $db = \Config\Database::connect();
+        $itemModel = new \App\Models\ItemModel();
         
-        // Get all items with categories
-        $items = $db->table('items')
-            ->select('items.*, categories.name as category_name')
-            ->join('categories', 'items.category_id = categories.id', 'left')
-            ->orderBy('items.id', 'DESC')
-            ->get()
-            ->getResult();
+        // Pagination settings
+        $perPage = 10;
+        $page = max(1, (int) ($this->request->getVar('page') ?? 1));
+        
+        // Get total count and paginated items
+        $totalItems = $itemModel->getTotalItems();
+        $totalPages = $totalItems > 0 ? ceil($totalItems / $perPage) : 1;
+        
+        // Ensure page doesn't exceed total pages and is at least 1
+        $page = max(1, min($page, $totalPages));
+        
+        $items = $itemModel->getItemsWithCategories($perPage, $page);
         
         // Get all categories for the form
         $categories = $db->table('categories')->get()->getResult();
         
         $data = [
             'items' => $items,
-            'categories' => $categories
+            'categories' => $categories,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalItems' => $totalItems
         ];
         
         return view('admin/items', $data);
@@ -241,16 +264,26 @@ class Admin extends BaseController
     
     public function announcements()
     {
-        $db = \Config\Database::connect();
+        $announcementModel = new \App\Models\AnnouncementModel();
         
-        // Get all announcements
-        $announcements = $db->table('announcements')
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->getResult();
+        // Pagination settings
+        $perPage = 10;
+        $page = max(1, (int) ($this->request->getVar('page') ?? 1));
+        
+        // Get total count and paginated announcements
+        $totalAnnouncements = $announcementModel->getTotalAnnouncements();
+        $totalPages = $totalAnnouncements > 0 ? ceil($totalAnnouncements / $perPage) : 1;
+        
+        // Ensure page doesn't exceed total pages and is at least 1
+        $page = max(1, min($page, $totalPages));
+        
+        $announcements = $announcementModel->getAnnouncements($perPage, $page);
         
         $data = [
-            'announcements' => $announcements
+            'announcements' => $announcements,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalAnnouncements' => $totalAnnouncements
         ];
         
         return view('admin/announcements', $data);

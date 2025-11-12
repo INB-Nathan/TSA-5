@@ -6,6 +6,17 @@ class Register extends BaseController
 {
     public function index()
     {
+        $session = session();
+        
+        // If user is already logged in, redirect to appropriate page
+        if ($session->get('isLoggedIn')) {
+            $roleId = $session->get('role_id');
+            if ($roleId == 1) {
+                return redirect()->to('/admin/dashboard');
+            }
+            return redirect()->to('/coffee');
+        }
+        
         return view('register');
     }
 

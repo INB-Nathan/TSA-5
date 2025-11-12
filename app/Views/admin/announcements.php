@@ -227,6 +227,44 @@
             color: #1a1a1a;
         }
 
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+        }
+
+        .pagination a,
+        .pagination span {
+            padding: 0.5rem 1rem;
+            border: 1px solid #d4a574;
+            color: #d4a574;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .pagination a:hover {
+            background-color: #d4a574;
+            color: #1a1a1a;
+        }
+
+        .pagination .active {
+            background-color: #d4a574;
+            color: #1a1a1a;
+            border-color: #d4a574;
+        }
+
+        .pagination .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .pagination .disabled:hover {
+            background-color: transparent;
+            color: #d4a574;
+        }
+
         @media (max-width: 768px) {
             .header-container {
                 flex-direction: column;
@@ -254,7 +292,12 @@
                     <li><a href="/admin/announcements">ANNOUNCEMENTS</a></li>
                 </ul>
             </nav>
-            <a href="/logout" class="logout-link">LOGOUT</a>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <?php if (session()->get('isLoggedIn')) : ?>
+                    <span style="color: #d4a574; font-size: 0.9rem;">Admin: <?= esc(session()->get('username')) ?></span>
+                <?php endif; ?>
+                <a href="/logout" class="logout-link">LOGOUT</a>
+            </div>
         </div>
     </header>
 
@@ -292,7 +335,7 @@
         </div>
 
         <!-- Announcements List -->
-        <h2 style="font-size: 1.5rem; margin-bottom: 1rem; color: #d4a574;">Existing Announcements (<?= count($announcements) ?>)</h2>
+        <h2 style="font-size: 1.5rem; margin-bottom: 1rem; color: #d4a574;">Existing Announcements<?= isset($totalAnnouncements) ? ' (' . $totalAnnouncements . ')' : '' ?></h2>
         
         <div class="announcements-list">
             <?php if (empty($announcements)) : ?>
@@ -310,6 +353,58 @@
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>
+
+        <?php if (isset($totalAnnouncements) && $totalAnnouncements > 0) : ?>
+            <div style="text-align: center; margin-top: 1rem; color: #c4a574; font-size: 0.9rem;">
+                <?php 
+                $start = (($currentPage - 1) * 10) + 1;
+                $end = min($currentPage * 10, $totalAnnouncements);
+                ?>
+                Showing <?= $start ?> to <?= $end ?> of <?= $totalAnnouncements ?> announcements
+            </div>
+        <?php endif; ?>
+        
+        <?php if (isset($totalAnnouncements) && $totalAnnouncements > 0 && isset($totalPages)) : ?>
+            <div class="pagination">
+                <?php if ($currentPage > 1) : ?>
+                    <a href="/admin/announcements?page=<?= $currentPage - 1 ?>" class="btn">Previous</a>
+                <?php else : ?>
+                    <span class="btn disabled">Previous</span>
+                <?php endif; ?>
+                
+                <?php
+                $startPage = max(1, $currentPage - 2);
+                $endPage = min($totalPages, $currentPage + 2);
+                
+                if ($startPage > 1) : ?>
+                    <a href="/admin/announcements?page=1" class="btn">1</a>
+                    <?php if ($startPage > 2) : ?>
+                        <span>...</span>
+                    <?php endif; ?>
+                <?php endif; ?>
+                
+                <?php for ($i = $startPage; $i <= $endPage; $i++) : ?>
+                    <?php if ($i == $currentPage) : ?>
+                        <span class="active"><?= $i ?></span>
+                    <?php else : ?>
+                        <a href="/admin/announcements?page=<?= $i ?>" class="btn"><?= $i ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+                
+                <?php if ($endPage < $totalPages) : ?>
+                    <?php if ($endPage < $totalPages - 1) : ?>
+                        <span>...</span>
+                    <?php endif; ?>
+                    <a href="/admin/announcements?page=<?= $totalPages ?>" class="btn"><?= $totalPages ?></a>
+                <?php endif; ?>
+                
+                <?php if ($currentPage < $totalPages) : ?>
+                    <a href="/admin/announcements?page=<?= $currentPage + 1 ?>" class="btn">Next</a>
+                <?php else : ?>
+                    <span class="btn disabled">Next</span>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
     </div>
 </body>
 </html>
