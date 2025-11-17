@@ -2,8 +2,18 @@
 
 namespace App\Controllers;
 
+/**
+ * Login Controller
+ * Handles user authentication: login form display, authentication, and logout
+ */
 class Login extends BaseController
 {
+    /**
+     * Display login page
+     * Redirects to dashboard/coffee page if user is already logged in
+     * 
+     * @return \CodeIgniter\HTTP\RedirectResponse|string
+     */
     public function index()
     {
         $session = session();
@@ -19,6 +29,15 @@ class Login extends BaseController
         return view('login');
     }
 
+    /**
+     * Authenticate user login
+     * Validates credentials, retrieves user role, creates session, and redirects based on role
+     * 
+     * Session includes: user_id, username, email, role_id, isLoggedIn, last_activity, login_time
+     * Role-based redirect: Admin (role_id=1) -> /admin/dashboard, User -> /coffee
+     * 
+     * @return \CodeIgniter\HTTP\RedirectResponse
+     */
     public function authenticate()
     {
         $session = session();
@@ -71,6 +90,12 @@ class Login extends BaseController
         return redirect()->to('/');
     }
     
+    /**
+     * Logout user
+     * Removes session data, regenerates session ID, and destroys session
+     * 
+     * @return \CodeIgniter\HTTP\RedirectResponse
+     */
     public function logout()
     {
         $session = session();

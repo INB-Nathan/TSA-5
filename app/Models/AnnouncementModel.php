@@ -4,6 +4,10 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
+/**
+ * Announcement Model
+ * Handles announcement data operations
+ */
 class AnnouncementModel extends Model
 {
     protected $table = 'announcements';
@@ -13,6 +17,14 @@ class AnnouncementModel extends Model
     protected $createdField = 'created_at';
     protected $updatedField = 'updated_at';
     
+    /**
+     * Get paginated list of announcements
+     * Ordered by creation date (newest first)
+     * 
+     * @param int $perPage Number of announcements per page (default: 10)
+     * @param int $page Current page number (default: 1)
+     * @return array Array of announcement objects
+     */
     public function getAnnouncements($perPage = 10, $page = 1)
     {
         $offset = ($page - 1) * $perPage;
@@ -25,6 +37,11 @@ class AnnouncementModel extends Model
     }
     
 
+    /**
+     * Get total count of all announcements
+     * 
+     * @return int Total number of announcements
+     */
     public function getTotalAnnouncements()
     {
         return $this->db->table('announcements')

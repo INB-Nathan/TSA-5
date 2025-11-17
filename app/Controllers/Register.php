@@ -2,8 +2,18 @@
 
 namespace App\Controllers;
 
+/**
+ * Register Controller
+ * Handles user registration: form display and user account creation
+ */
 class Register extends BaseController
 {
+    /**
+     * Display registration page
+     * Redirects to dashboard/coffee page if user is already logged in
+     * 
+     * @return \CodeIgniter\HTTP\RedirectResponse|string
+     */
     public function index()
     {
         $session = session();
@@ -19,6 +29,19 @@ class Register extends BaseController
         return view('register');
     }
 
+    /**
+     * Create new user account
+     * 
+     * Validates registration data:
+     * - Username: 3-255 chars, alphanumeric + underscore, unique
+     * - Email: valid format, unique
+     * - Password: min 8 chars, must contain uppercase, lowercase, number, and special character
+     * 
+     * Creates user account, assigns default role (role_id=2), sends welcome email (non-blocking),
+     * and redirects to login page
+     * 
+     * @return \CodeIgniter\HTTP\RedirectResponse|string
+     */
     public function create()
     {
         $validation =  \Config\Services::validation();
@@ -49,6 +72,17 @@ class Register extends BaseController
 
         $db->table('user_roles')->insert(['user_id' => $userId, 'role_id' => 2]);
 
+        // Send welcome email
+        try {
+            $emailService = new \App\Libraries\EmailService();
+            $emailService->sendWelcomeEmail(
+                $this->request->getPost('email'),
+                $this->request->getPost('username')
+            );
+        } catch (\Exception $e) {
+            // Log error but don't fail registration
+            log_message('error', 'Failed to send welcome email: ' . $e->getMessage());
+        }
 
         return redirect()->to('/')->with('msg', 'Registration successful. Please login.');
     }

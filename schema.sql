@@ -15,7 +15,10 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  reset_token VARCHAR(64) NULL,
+  reset_token_expires DATETIME NULL,
+  INDEX idx_reset_token (reset_token)
 );
 
 CREATE TABLE IF NOT EXISTS user_roles (

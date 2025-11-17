@@ -9,9 +9,15 @@ This document provides a comprehensive overview of the application, its features
 - [Introduction](#introduction)
 - [Features](#features)
 - [Database Schema](#database-schema)
+  - [Setup](#setup)
+  - [Complete Schema Structure](#complete-schema-structure)
+  - [Tables](#tables)
 - [Controllers](#controllers)
 - [Routes](#routes)
 - [Filters](#filters)
+- [Libraries](#libraries)
+- [Models](#models)
+- [Password Reset Feature](#password-reset-feature)
 - [Views](#views)
 - [Security](#security)
 - [Pagination](#pagination)
@@ -32,6 +38,10 @@ Brewkaholic is a Technical Summative Assessment for Web System Development in FE
   - View account information
   - Change password with strong validation
   - Delete own account with password confirmation (sudo function)
+- **Password Reset**: 
+  - Request password reset via email from login page
+  - Secure token-based password reset (1-hour expiration)
+  - Email notifications for password changes
 
 ### Admin Features
 - **Dashboard**: Overview of registered users and quick access to management features
@@ -62,8 +72,49 @@ Brewkaholic is a Technical Summative Assessment for Web System Development in FE
 - CSRF protection on forms
 - Protected routes using filters
 - Security logging for login/logout events
+- Password reset with secure token generation (64-char hex, 1-hour expiration)
+- Email enumeration prevention (generic success messages)
+- Single-use password reset tokens
 
 ## Database Schema
+
+### Setup
+
+The complete database schema is defined in `schema.sql`. This file creates all tables, indexes, and initial data including password reset functionality.
+
+**To set up the database:**
+```bash
+mysql -u your_username -p < schema.sql
+```
+
+**Or manually in MySQL:**
+```sql
+-- Execute the entire schema.sql file
+```
+
+### Complete Schema Structure
+
+The `schema.sql` file includes:
+
+**Database:**
+- `CREATE DATABASE IF NOT EXISTS brewkaholic`
+
+**Tables:**
+- `roles` - User roles (admin, customer)
+- `users` - User accounts with password reset support
+- `user_roles` - Many-to-many relationship between users and roles
+- `categories` - Menu item categories
+- `items` - Menu items/products
+- `item_availability` - Item availability tracking
+- `announcements` - Site-wide announcements
+
+**Initial Data:**
+- Roles: 'admin' (id=1), 'customer' (id=2)
+- Categories: 'Hot Coffees', 'Cold Coffees', 'Pastries'
+
+**Indexes:**
+- `idx_reset_token` on `users(reset_token)` - For fast password reset token lookups
+- Primary keys and foreign keys as defined in table schemas
 
 ### Tables
 
@@ -74,6 +125,8 @@ Stores user account information.
 - `password` (VARCHAR(255), NOT NULL) - Hashed using password_hash()
 - `email` (VARCHAR(255), UNIQUE, NOT NULL)
 - `created_at` (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP)
+- `reset_token` (VARCHAR(64), NULL) - Password reset token (indexed)
+- `reset_token_expires` (DATETIME, NULL) - Token expiration datetime
 
 #### `roles`
 Defines user roles.
@@ -221,7 +274,7 @@ Admin panel functionality with pagination support.
 - `deleteAnnouncement($id)` - Deletes announcement
 
 ### `Account` (`app/Controllers/Account.php`)
-Customer account management.
+Customer account management and password reset functionality.
 
 **Methods:**
 - `index()` - Account settings page
@@ -230,11 +283,29 @@ Customer account management.
   - Shows account deletion form
 - `changePassword()` - Changes user password
   - Verifies current password
-  - Validates new password (same rules as registration)
-  - Updates password hash
+  - Validates new password (same rules as registration: min 8 chars, uppercase, lowercase, number, special character)
+  - Updates password hash in database
+  - Sends password change notification email
+  - Redirects to account page with success/error messages
+- `requestPasswordReset()` - Request password reset (public access)
+  - Accepts email address from POST data (no authentication required)
+  - Validates email format
+  - Generates secure random token (64 hex characters)
+  - Stores token and expiration (1 hour) in database
+  - Sends password reset email with reset link
+  - Always shows success message (prevents email enumeration attacks)
+  - Works from login page's "Forgot Password" form
+- `resetPassword($token)` - Reset password using token
+  - **GET Request**: Validates token and expiration, displays reset password form if valid
+  - **POST Request**: Validates token, new password requirements, updates password, clears reset token
+  - Token expiration: 1 hour from generation
+  - Sends password reset confirmation email on success
+  - Redirects to login page with success/error messages
 - `deleteAccount()` - Deletes user's own account
   - Requires password confirmation (sudo function)
+  - Verifies password before deletion
   - Destroys session after deletion
+  - Redirects to login page
 
 ## Routes
 
@@ -245,6 +316,12 @@ POST /login/authenticate       → Login::authenticate
 GET  /register                 → Register::index
 POST /register/create          → Register::create
 GET  /logout                   → Login::logout
+
+# Password Reset Routes (Public Access)
+GET  /request-password-reset   → Redirects to login (form embedded there)
+POST /request-password-reset   → Account::requestPasswordReset
+GET  /reset-password/{token}   → Account::resetPassword (displays form)
+POST /reset-password           → Account::resetPassword (processes reset)
 ```
 
 ### Protected Routes (Auth Required)
@@ -275,6 +352,20 @@ GET  /admin/announcements/delete/{id}     → Admin::deleteAnnouncement (filter:
 ### `AuthFilter` (`app/Filters/AuthFilter.php`)
 Protects routes requiring authentication with session timeout handling.
 
+**Class Documentation:**
+- Protects routes requiring user authentication
+- Checks if user is logged in and validates session timeout (2 hours)
+- Redirects to login page if not authenticated or session expired
+
+**Methods:**
+- `before($request, $arguments)` - Execute before request processing
+  - Validates user authentication and session timeout
+  - Session timeout: 2 hours (7200 seconds)
+  - Updates `last_activity` timestamp on successful validation
+  - Redirects to login if not authenticated or session expired
+- `after($request, $response, $arguments)` - Execute after request processing
+  - Currently unused - reserved for future functionality
+
 **Functionality:**
 - Checks if `isLoggedIn` session variable is set
 - Validates session timeout (2 hours inactivity)
@@ -285,6 +376,22 @@ Protects routes requiring authentication with session timeout handling.
 
 ### `AdminFilter` (`app/Filters/AdminFilter.php`)
 Protects admin-only routes with session timeout handling.
+
+**Class Documentation:**
+- Protects admin routes requiring admin privileges
+- Extends AuthFilter functionality by also checking if user has admin role (role_id = 1)
+- Validates authentication, session timeout (2 hours), and admin role
+- Redirects non-admin users to coffee page
+
+**Methods:**
+- `before($request, $arguments)` - Execute before request processing
+  - Validates user authentication, session timeout, and admin role
+  - Session timeout: 2 hours (7200 seconds)
+  - Admin role check: role_id must equal 1
+  - Updates `last_activity` timestamp on successful validation
+  - Redirects to login if not authenticated, or coffee page if not admin
+- `after($request, $response, $arguments)` - Execute after request processing
+  - Currently unused - reserved for future functionality
 
 **Functionality:**
 - Checks if user is logged in
@@ -758,6 +865,238 @@ This provides transparency and helps users understand their session status.
 9. ✅ User-friendly session information display
 10. ✅ Protection against session fixation attacks
 
+## Libraries
+
+### `EmailService` (`app/Libraries/EmailService.php`)
+Handles all email operations: welcome emails, password resets, notifications, and custom emails.
+
+**Class Documentation:**
+- Centralized email service using CodeIgniter's email library
+- Uses email configuration from `app/Config/Email.php`
+- Supports HTML email templates via view files
+
+**Methods:**
+- `__construct()` - Initialize email service with CodeIgniter email configuration
+- `sendWelcomeEmail($to, $username)` - Send welcome email to new user
+  - Uses 'emails/welcome' view template
+  - Personalizes with username and site name
+- `sendPasswordResetEmail($to, $resetToken, $username)` - Send password reset email with reset link
+  - Uses 'emails/password_reset' view template
+  - Generates reset link: `/reset-password/{token}`
+  - Token expires in 1 hour
+- `sendNotificationEmail($to, $subject, $message, $data = [])` - Send generic notification email
+  - Uses 'emails/notification' view template with custom message
+  - Supports additional data array for template variables
+- `sendEmail($to, $subject, $message, $isHtml = true)` - Send custom email (plain text or HTML)
+  - Direct email sending without template
+  - Supports both HTML and plain text formats
+- `getError()` - Get last email error message
+  - Returns debug information from CodeIgniter email service
+
+**Email Templates:**
+- `app/Views/emails/welcome.php` - Welcome email template
+- `app/Views/emails/password_reset.php` - Password reset email template
+- `app/Views/emails/notification.php` - Generic notification template
+
+### `ImageService` (`app/Libraries/ImageService.php`)
+Handles image processing: resizing, thumbnail creation, watermarking (text and image), and dimension retrieval.
+
+**Class Documentation:**
+- Image manipulation service using CodeIgniter's image library
+- Supports resizing, watermarking, and thumbnail generation
+- Handles both text and image watermarks with customizable options
+
+**Methods:**
+- `__construct()` - Initialize image service with CodeIgniter image library
+- `resizeImage($sourcePath, $destinationPath, $maxWidth, $maxHeight, $quality)` - Process and resize uploaded image
+  - Resizes image maintaining aspect ratio
+  - Default max dimensions: 800x800px
+  - Default quality: 85
+- `createThumbnail($sourcePath, $destinationPath, $width, $height, $position, $quality)` - Create a thumbnail from an image
+  - Creates square thumbnail with fit positioning
+  - Default size: 200x200px
+  - Default position: center
+  - Default quality: 80
+- `processUploadedImage($file, $uploadPath, $options)` - Process uploaded image file with resize, watermark, and thumbnail creation
+  - Comprehensive image processing pipeline
+  - Options include: maxWidth, maxHeight, thumbWidth, thumbHeight, quality, watermark settings
+  - Returns array with 'original' and 'thumbnail' paths
+- `addTextWatermark($sourcePath, $destinationPath, $text, $position, $fontSize, $color, $opacity, $quality)` - Add text watermark to an image
+  - Handles color normalization (converts arrays to hex strings if needed)
+  - Maps position strings to CodeIgniter alignment constants
+  - Supports positions: bottom-right, bottom-left, top-right, top-left, center
+  - Applies text watermark with shadow effect
+- `addImageWatermark($sourcePath, $destinationPath, $watermarkPath, $position, $opacity, $quality)` - Add image watermark to an image
+  - Calculates watermark position coordinates based on source image dimensions
+  - Uses 20px padding from edges
+  - Falls back to bottom-right if invalid position provided
+- `hexToRgb($hex)` - Convert hex color to RGB array (protected method)
+  - Converts hex color code to RGB array format
+- `getImageDimensions($imagePath)` - Get image dimensions
+  - Returns array with 'width' and 'height'
+  - Returns false on failure
+
+**Watermark Features:**
+- **Text Watermark**: Customizable text, position, font size, color, opacity
+- **Image Watermark**: Upload custom watermark image with position and opacity control
+- **Position Options**: bottom-right, bottom-left, top-right, top-left, center
+- **Color Support**: Hex color codes (e.g., '#FFFFFF') or RGB arrays
+
+## Models
+
+### `UserModel` (`app/Models/UserModel.php`)
+Handles user data operations with role information.
+
+**Class Documentation:**
+- User model extending CodeIgniter Model class
+- Provides pagination support for user listings
+- Includes role information via joins
+
+**Methods:**
+- `getUsersWithRoles($perPage = 10, $page = 1)` - Get paginated list of users with their role names
+  - Joins users, user_roles, and roles tables to include role information
+  - Returns array of user objects with role_name property
+  - Ordered by creation date (newest first)
+- `getTotalUsers()` - Get total count of all users
+  - Returns integer count of all users in database
+
+**Properties:**
+- `$table = 'users'` - Database table name
+- `$primaryKey = 'id'` - Primary key field
+- `$allowedFields = ['username', 'password', 'email', 'created_at']` - Mass assignment allowed fields
+- `$useTimestamps = false` - Disables automatic timestamp management
+
+### `ItemModel` (`app/Models/ItemModel.php`)
+Handles item data operations with category information.
+
+**Class Documentation:**
+- Item model extending CodeIgniter Model class
+- Provides pagination support for item listings
+- Includes category information via joins
+
+**Methods:**
+- `getItemsWithCategories($perPage = 10, $page = 1)` - Get paginated list of items with their category names
+  - Joins items and categories tables to include category information
+  - Returns array of item objects with category_name property
+  - Ordered by item ID (newest first)
+- `getTotalItems()` - Get total count of all items
+  - Returns integer count of all items in database
+
+**Properties:**
+- `$table = 'items'` - Database table name
+- `$primaryKey = 'id'` - Primary key field
+- `$allowedFields = ['name', 'description', 'price', 'category_id', 'image_url']` - Mass assignment allowed fields
+- `$useTimestamps = false` - Disables automatic timestamp management
+
+### `AnnouncementModel` (`app/Models/AnnouncementModel.php`)
+Handles announcement data operations.
+
+**Class Documentation:**
+- Announcement model extending CodeIgniter Model class
+- Provides pagination support for announcement listings
+- Uses automatic timestamp management
+
+**Methods:**
+- `getAnnouncements($perPage = 10, $page = 1)` - Get paginated list of announcements
+  - Ordered by creation date (newest first)
+  - Returns array of announcement objects
+- `getTotalAnnouncements()` - Get total count of all announcements
+  - Returns integer count of all announcements in database
+
+**Properties:**
+- `$table = 'announcements'` - Database table name
+- `$primaryKey = 'id'` - Primary key field
+- `$allowedFields = ['title', 'content']` - Mass assignment allowed fields
+- `$useTimestamps = true` - Enables automatic timestamp management
+- `$createdField = 'created_at'` - Created timestamp field
+- `$updatedField = 'updated_at'` - Updated timestamp field
+
+## Password Reset Feature
+
+The application includes a comprehensive password reset system that allows users to reset their passwords via email without requiring authentication.
+
+### Overview
+
+**Flow:**
+1. User clicks "Forgot your password?" link on login page
+2. User enters email address in expandable form
+3. System generates secure reset token and sends email
+4. User clicks reset link in email
+5. User enters new password on reset form
+6. Password is updated and user can login
+
+### Database Schema
+
+**Password Reset Columns in `users` Table:**
+- `reset_token` (VARCHAR(64), NULL) - Stores the reset token
+- `reset_token_expires` (DATETIME, NULL) - Stores expiration datetime
+- Index: `idx_reset_token` on `reset_token` column for faster lookups
+
+**Note:** These columns are included in the main `schema.sql` file. No separate migration is needed.
+
+### Security Features
+
+1. **Email Enumeration Prevention**
+   - Always shows generic success message regardless of whether email exists
+   - Prevents attackers from discovering valid email addresses
+
+2. **Token Security**
+   - 64-character hexadecimal token (32 random bytes)
+   - Cryptographically secure random generation using `random_bytes()`
+   - 1-hour expiration time
+   - Single-use tokens (cleared after successful reset)
+
+3. **Token Validation**
+   - Validates token existence in database
+   - Checks token expiration before allowing reset
+   - Redirects to login if token invalid/expired
+
+4. **Password Requirements**
+   - Same strong password rules as registration
+   - Minimum 8 characters
+   - Must contain: uppercase, lowercase, number, special character
+
+### Implementation Details
+
+**Request Password Reset:**
+- Route: `POST /request-password-reset`
+- Controller: `Account::requestPasswordReset()`
+- Public access (no authentication required)
+- Form embedded in login page (expandable)
+
+**Reset Password:**
+- Route: `GET /reset-password/{token}` - Display form
+- Route: `POST /reset-password` - Process reset
+- Controller: `Account::resetPassword($token)`
+- Public access (no authentication required)
+- Validates token on both GET and POST requests
+
+**Email Template:**
+- File: `app/Views/emails/password_reset.php`
+- Includes reset link with token
+- Shows expiration warning (1 hour)
+- Security notice about unauthorized requests
+
+### User Experience
+
+**Login Page:**
+- "Forgot your password?" link below registration link
+- Expandable form appears when link clicked
+- Form includes email input and submit button
+- JavaScript toggles form visibility
+
+**Reset Form:**
+- Clean, focused interface
+- Password requirements displayed
+- Validation errors shown inline
+- Success/error messages via flashdata
+
+**Email:**
+- Professional HTML email template
+- Clear call-to-action button
+- Fallback text link
+- Security warnings included
+
 ## File Structure
 
 ```
@@ -765,34 +1104,45 @@ brewkaholic/
 ├── app/
 │   ├── Config/
 │   │   ├── Database.php          # Database configuration
+│   │   ├── Email.php             # Email configuration
 │   │   ├── Filters.php           # Filter registration
 │   │   ├── Routes.php            # Route definitions
 │   │   └── Session.php           # Session configuration
 │   ├── Controllers/
-│   │   ├── Account.php            # Account management
+│   │   ├── Account.php            # Account management + password reset
 │   │   ├── Admin.php             # Admin panel (with pagination)
+│   │   ├── BaseController.php    # Base controller class
 │   │   ├── Coffee.php            # Customer menu
 │   │   ├── Login.php              # Authentication (with session management)
 │   │   └── Register.php          # User registration
 │   ├── Filters/
 │   │   ├── AdminFilter.php       # Admin access control (with session timeout)
 │   │   └── AuthFilter.php        # Authentication check (with session timeout)
+│   ├── Libraries/
+│   │   ├── EmailService.php      # Email sending service
+│   │   └── ImageService.php      # Image processing service
 │   ├── Models/
 │   │   ├── AnnouncementModel.php # Announcement pagination
 │   │   ├── ItemModel.php         # Item pagination
 │   │   └── UserModel.php         # User pagination
 │   └── Views/
-│       ├── login.php              # Login form
+│       ├── login.php              # Login form (with password reset)
 │       ├── register.php           # Registration form
 │       ├── coffee_view.php        # Customer menu page
 │       ├── account/
-│       │   └── index.php          # Account settings
-│       └── admin/
-│           ├── dashboard.php      # Admin dashboard
-│           ├── users.php          # User management
-│           ├── edit_user.php      # Edit user form
-│           ├── items.php          # Item management
-│           └── announcements.php  # Announcement management
+│       │   ├── index.php          # Account settings
+│       │   ├── request_password_reset.php  # Password reset request (unused)
+│       │   └── reset_password.php  # Password reset form
+│       ├── admin/
+│       │   ├── dashboard.php      # Admin dashboard
+│       │   ├── users.php          # User management
+│       │   ├── edit_user.php      # Edit user form
+│       │   ├── items.php          # Item management
+│       │   └── announcements.php  # Announcement management
+│       └── emails/
+│           ├── welcome.php        # Welcome email template
+│           ├── password_reset.php # Password reset email template
+│           └── notification.php   # Notification email template
 ├── public/
 │   ├── assets/
 │   │   └── images/               # Uploaded images

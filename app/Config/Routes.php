@@ -12,6 +12,15 @@ $routes->get('/register', 'Register::index');
 $routes->post('/register/create', 'Register::create');
 $routes->get('/logout', 'Login::logout');
 
+// Password reset routes (no auth required - public access)
+// GET route redirects to login page since form is embedded there
+$routes->get('/request-password-reset', function() {
+    return redirect()->to('/');
+});
+$routes->post('/request-password-reset', 'Account::requestPasswordReset');
+$routes->get('/reset-password/(:segment)', 'Account::resetPassword/$1');
+$routes->post('/reset-password', 'Account::resetPassword');
+
 // Admin routes
 $routes->group('admin', ['filter' => 'admin'], function($routes) {
     $routes->get('dashboard', 'Admin::dashboard');

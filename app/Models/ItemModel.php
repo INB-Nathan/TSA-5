@@ -4,6 +4,10 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
+/**
+ * Item Model
+ * Handles item data operations with category information
+ */
 class ItemModel extends Model
 {
     protected $table = 'items';
@@ -12,6 +16,14 @@ class ItemModel extends Model
     protected $useTimestamps = false;
     
 
+    /**
+     * Get paginated list of items with their category names
+     * Joins items and categories tables to include category information
+     * 
+     * @param int $perPage Number of items per page (default: 10)
+     * @param int $page Current page number (default: 1)
+     * @return array Array of item objects with category_name property
+     */
     public function getItemsWithCategories($perPage = 10, $page = 1)
     {
         $offset = ($page - 1) * $perPage;
@@ -25,6 +37,11 @@ class ItemModel extends Model
             ->getResult();
     }
 
+    /**
+     * Get total count of all items
+     * 
+     * @return int Total number of items
+     */
     public function getTotalItems()
     {
         return $this->db->table('items')

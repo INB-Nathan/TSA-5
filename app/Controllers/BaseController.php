@@ -44,6 +44,15 @@ abstract class BaseController extends Controller
     // protected $session;
 
     /**
+     * Initialize controller
+     * Called automatically by CodeIgniter before each request
+     * 
+     * Use this method to preload models, libraries, or perform setup tasks
+     * that should run before every controller method
+     * 
+     * @param RequestInterface $request Current request object
+     * @param ResponseInterface $response Current response object
+     * @param LoggerInterface $logger Logger instance
      * @return void
      */
     public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)

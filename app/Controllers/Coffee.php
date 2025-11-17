@@ -2,8 +2,19 @@
 
 namespace App\Controllers;
 
+/**
+ * Coffee Controller
+ * Handles the customer-facing coffee menu page
+ */
 class Coffee extends BaseController
 {
+    /**
+     * Display coffee menu page
+     * Fetches items with categories, all categories for filtering, and announcements.
+     * Handles announcements query gracefully if table doesn't exist.
+     * 
+     * @return string
+     */
     public function index()
     {
         $db = \Config\Database::connect();
